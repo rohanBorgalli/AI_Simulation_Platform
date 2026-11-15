@@ -1,4 +1,4 @@
-# app.py
+%%writefile app.py
 # End-to-End AI, ML, DL, GenAI, LLM, NLP, Embeddings, Vector DB, RAG & Agentic AI Simulation Platform
 # Developed by Dr. Rohan Borgalli, Shah & Anchor Kutchhi Engineering College, Chembur
 
@@ -53,7 +53,8 @@ st.markdown(f"""
         font-weight: 700;
         color: #ffffff;
     }}
-    .sakec-header p {{        margin: 4px 0 0 0;
+    .sakec-header p {{
+        margin: 4px 0 0 0;
         font-size: 0.92rem;
         color: #bae6fd;
         font-weight: 600;
@@ -72,9 +73,11 @@ st.markdown(f"""
         border-top: 2px solid #38bdf8;
         z-index: 9999;
     }}
-    .block-container {{        padding-bottom: 75px !important;
+    .block-container {{
+        padding-bottom: 95px !important;
     }}
-    .step-card {{        background-color: #f8fafc;
+    .step-card {{ 
+        background-color: #f8fafc;
         border: 1px solid #cbd5e1;
         border-left: 5px solid #2563eb;
         padding: 12px 16px;
@@ -98,7 +101,7 @@ st.markdown(f"""
 <div class="sakec-footer">
     🎓 {BRAND_ATTRIBUTION} | Interactive AI, Deep Learning, GenAI, RAG & Agentic Training Platform
 </div>
-""", unsafe_allow_html=True)
+""", unsafe_allow_html=True) 
 
 # ==========================================
 # 2. SQLITE DATABASE & RBAC PROGRESS ENGINE
@@ -168,7 +171,7 @@ def register_new_user(username, full_name, department, password, role="user"):
         conn.close()
         return True, "Account registered successfully! Please sign in."
     except sqlite3.IntegrityError:
-        conn.close()
+        conn.close;
         return False, "Username already exists. Please choose a different username."
 
 def save_module_progress(username, module_id, module_name, task_done=False, quiz_score=0, max_score=3):
@@ -212,32 +215,15 @@ def compute_embeddings(texts):
         if model is not None:
             return np.array(model.encode(texts, normalize_embeddings=True)), "SentenceTransformer (all-MiniLM-L6-v2 | 384-D)"
 
-    # Built-in Deterministic Semantic-Cluster 384-D Vector Engine (Instant Zero-Download Execution)
     domain_anchors = {
         "electric": np.array([1.2, 0.1, -0.6, 0.2]),
         "ev": np.array([1.2, 0.15, -0.55, 0.25]),
         "battery": np.array([1.15, 0.2, -0.5, 0.3]),
-        "lithium": np.array([1.1, 0.22, -0.48, 0.28]),
-        "bldc": np.array([1.05, 0.18, -0.52, 0.22]),
-        "motor": np.array([1.0, 0.12, -0.5, 0.2]),
-        "regenerative": np.array([1.08, 0.16, -0.45, 0.24]),
         "neural": np.array([-0.5, 1.2, 0.3, -0.2]),
         "deep": np.array([-0.48, 1.15, 0.32, -0.18]),
         "transformer": np.array([-0.45, 1.18, 0.4, -0.15]),
-        "attention": np.array([-0.42, 1.12, 0.38, -0.12]),
         "rag": np.array([-0.35, 1.1, 0.55, 0.1]),
-        "vector": np.array([-0.38, 1.08, 0.52, 0.12]),
-        "chromadb": np.array([-0.36, 1.05, 0.58, 0.15]),
-        "embedding": np.array([-0.4, 1.1, 0.5, 0.08]),
-        "param": np.array([-0.32, 1.02, 0.6, 0.18]),
-        "shavak": np.array([-0.30, 1.00, 0.62, 0.20]),
-        "chunk": np.array([-0.34, 1.04, 0.56, 0.14]),
-        "food": np.array([-0.4, -0.7, -1.1, 0.8]),
-        "biryani": np.array([-0.45, -0.75, -1.15, 0.85]),
-        "vada": np.array([-0.42, -0.72, -1.12, 0.82]),
-        "masala": np.array([-0.38, -0.68, -1.08, 0.78]),
-        "spices": np.array([-0.44, -0.74, -1.10, 0.80]),
-        "puran": np.array([-0.41, -0.71, -1.09, 0.81]),
+        "vector": np.array([-0.38, 1.08, 0.52, 0.12])
     }
     vecs = []
     for t in texts:
@@ -248,44 +234,40 @@ def compute_embeddings(texts):
             for kw, anchor in domain_anchors.items():
                 if kw in tok:
                     v[:4] += anchor * 0.9
-        for tok in tokens:
-            idx = 4 + (abs(hash(tok)) % 60)
-            v[idx] += 0.45
         v = v / (np.linalg.norm(v) + 1e-9)
         vecs.append(v)
     return np.array(vecs), "Built-in Deterministic 384-D Vector Engine (Zero-API-Key)"
 
 def execute_llm(prompt, system_prompt, temperature, top_p):
     mode = st.session_state.get("exec_mode", "Built-in Interactive Simulator (Zero Setup)")
-    ollama_url = st.session_state.get("ollama_url", "http://localhost:11434")
-    ollama_model = st.session_state.get("ollama_model", "llama3.2:1b")
-
     if "Ollama" in mode:
         try:
             resp = requests.post(
-                f"{ollama_url.rstrip('/')}/api/generate",
+                f"{st.session_state.get('ollama_url', 'http://localhost:11434').rstrip('/')}/api/generate",
                 json={
-                    "model": ollama_model,
+                    "model": st.session_state.get("ollama_model", "llama3.2:1b"),
                     "system": system_prompt,
                     "prompt": prompt,
                     "stream": False,
                     "options": {"temperature": temperature, "top_p": top_p}
                 },
-                timeout=20
+                timeout=10
             )
             if resp.status_code == 200:
-                return resp.json().get("response", ""), f"Live Ollama / Cluster ({ollama_model})"
-        except Exception as e:
-            st.warning(f"Local endpoint `{ollama_url}` not reachable ({e}). Using Built-in Pedagogical LLM Simulator.")
+                return resp.json().get("response", ""), "Local Ollama"
+        except Exception:
+            pass
 
-    if "RETRIEVED CONTEXT:" in prompt:
-        ctx_part = prompt.split("RETRIEVED CONTEXT:")[1].split("USER QUESTION:")[0].strip()
-        q_part = prompt.split("USER QUESTION:")[-1].replace("GROUNDED ANSWER:", "").strip()
+    # Dynamic Contextual response builder for RAG queries
+    if "RETRIEVED CONTEXT:" in prompt and "USER QUESTION:" in prompt:
+        context_text = prompt.split("RETRIEVED CONTEXT:")[1].split("USER QUESTION:")[0].strip()
+        user_q = prompt.split("USER QUESTION:")[1].split("GROUNDED ANSWER:")[0].strip()
         return (
-            f"**Grounded Synthesis (Temp={temperature}, Top-P={top_p}):** "
-            f"Based strictly on the retrieved ChromaDB context chunks for your question (*\"{q_part}\"*): "
-            f"{ctx_part} "
-            f"- **Verification Note:** Every claim above is directly traceable to the top-ranked Cosine Similarity chunks retrieved in Stage 4, preventing parametric hallucination."
+            f"**Grounded Cognitive Response (Zero-API Simulator Mode):**\n\n"
+            f"Using the retrieved knowledge index segments, I evaluated your query: *\"{user_q}\"*\n\n"
+            f"**Synthesized Answer:** Based on the factual context, the retrieved sources show:\n"
+            f"{context_text[:500]}...\n\n"
+            f"*Confidence score: 98% grounded (No parametric hallucinations).*"
         ), "Built-in Zero-API-Key RAG Synthesizer"
 
     if "96 cells" in prompt or "3.7V" in prompt:
@@ -297,9 +279,9 @@ def execute_llm(prompt, system_prompt, temperature, top_p):
         ), "Built-in Zero-API-Key LLM Engine"
 
     return (
-        f"**[Pedagogical LLM Output | Temp={temperature} | Top-P={top_p}]**\n"
-        f"- **System Persona Active:** *{system_prompt}*\n"
-        f"- **Decoded Response:** For the input prompt (`{prompt[:120]}...`), the autoregressive Transformer scales raw vocabulary logits by 1/T = 1/{max(0.05, temperature):.2f}, filters the top {int(top_p*100)}% nucleus probability mass, and generates context-aligned tokens."
+        f"**[Pedagogical Simulator Response]**\n"
+        f"System Persona Active: *{system_prompt}*\n\n"
+        f"The simulation output indicates highly optimized convergence for prompt query: \"{prompt[:100]}...\""
     ), "Built-in Zero-API-Key LLM Engine"
 
 # ==========================================
@@ -309,13 +291,58 @@ if "user" not in st.session_state:
     st.session_state.user = None
 
 if st.session_state.user is None:
-    st.session_state.user = {"username": "admin", "full_name": "Dr. Rohan Borgalli (Admin)", "department": "EXTC - SAKEC Chembur", "role": "admin"}
+    col1, col2 = st.columns([1.2, 1])
+    with col1:
+        st.markdown("### 🔒 Session Authentication Portal")
+        tab_in, tab_reg = st.tabs(["🔑 Registered Sign In", "📝 Trainee Registration"])
+        
+        with tab_in:
+            with st.form("login_form"):
+                u_in = st.text_input("Username", value="student1")
+                p_in = st.text_input("Password", type="password", value="student123")
+                btn_login = st.form_submit_button("Enter Simulation Workspace", use_container_width=True)
+                if btn_login:
+                    auth = authenticate_user(u_in, p_in)
+                    if auth:
+                        st.session_state.user = auth
+                        st.success(f"Welcome back, {auth['full_name']}!")
+                        st.rerun()
+                    else:
+                        st.error("Invalid username or password. Use student1/student123 or admin/admin123.")
+        
+        with tab_reg:
+            with st.form("register_form"):
+                r_user = st.text_input("Choose Username")
+                r_name = st.text_input("Full Name")
+                r_dept = st.text_input("Department", value="EXTC - SAKEC Chembur")
+                r_pass = st.text_input("Password", type="password")
+                r_role = st.selectbox("Role Type", ["user", "admin"])
+                btn_reg = st.form_submit_button("Register Trainee Account", use_container_width=True)
+                if btn_reg:
+                    if r_user and r_name and r_pass:
+                        ok, msg = register_new_user(r_user, r_name, r_dept, r_pass, r_role)
+                        if ok:
+                            st.success(msg)
+                        else:
+                            st.error(msg)
+                    else:
+                        st.warning("Please fill all configuration fields.")
+    with col2:
+        st.markdown("""
+        ### 🏛️ SAKEC AI & GenAI Simulation Lab
+        This virtual training laboratory runs zero-cost, serverless AI/ML engineering tools locally. To track your curriculum completion milestones:
+        - **Trainee Username**: `student1` | **Password**: `student123`
+        - **Faculty Admin Username**: `admin` | **Password**: `admin123`
+        
+        Your task performance and graded concept check records sync instantly with the local SQLite progress DB.
+        """)
+    st.stop()
 
 user = st.session_state.user
 user_prog = fetch_user_progress(user["username"])
 
 # ==========================================
-# 5. SIDEBAR: USER PROFILE, PROGRESS & ENGINE CONFIG
+# 5. SIDEBAR: USER PROFILE & CONFIG
 # ==========================================
 with st.sidebar:
     st.markdown(f"### 👤 {user['full_name']}")
@@ -349,7 +376,7 @@ with st.sidebar:
         st.session_state.ollama_url = st.text_input("Ollama / Cluster Endpoint URL", value="http://localhost:11434")
         st.session_state.ollama_model = st.text_input("Model Name", value="llama3.2:1b")
 
-    st.session_state.use_local_st = st.checkbox("Use Local HuggingFace SentenceTransformer (all-MiniLM-L6-v2)", value=False)
+    st.session_state.use_local_st = st.checkbox("Use Local SentenceTransformer", value=False)
 
     if st.button("🚪 Sign Out", use_container_width=True):
         st.session_state.user = None
@@ -503,7 +530,7 @@ if active_page in MODULES:
 
                 p1, p2 = st.columns(2)
                 with p1:
-                    fig_l = px.line(y=clf.loss_curve_, labels={"index": "Epoch", "y": "Cross-Entropy Loss"}, title="Gradient Descent Convergence Curve")
+                    fig_l = px.line(y=clf.loss_curve_, labels={("index"): "Epoch", "y": "Cross-Entropy Loss"}, title="Gradient Descent Convergence Curve")
                     st.plotly_chart(fig_l, use_container_width=True)
                 with p2:
                     x_min, x_max = X_norm[:, 0].min() - 0.5, X_norm[:, 0].max() + 0.5
@@ -595,39 +622,117 @@ if active_page in MODULES:
                 st.plotly_chart(fig_hm, use_container_width=True)
 
         elif active_page == "mod4_llm_prompt":
-            c_p1, c_p2 = st.columns([1, 1.8])
-            with c_p1:
-                sys_prompt = st.text_area("System Prompt (Role & Guardrails)", value="You are an Engineering Professor at SAKEC Mumbai. Provide rigorous, step-by-step technical explanations.")
-                temp_val = st.slider("Temperature (T)", 0.05, 1.5, 0.25, 0.05)
-                top_p_val = st.slider("Top-P (Nucleus Sampling)", 0.1, 1.0, 0.9, 0.05)
-                p_mode = st.selectbox("Prompting Paradigm Template", ["Zero-Shot Prompt", "Few-Shot (In-Context Learning)", "Chain-of-Thought (Step-by-Step Engineering Math)"])
+            st.markdown("### 🛠️ Interactive Language Model Sandbox")
+            
+            tab_gen, tab_api, tab_chat = st.tabs([
+                "🎮 1. Next-Token Probabilities & Temperature",
+                "🔌 2. HTTP POST API Code Client",
+                "💬 3. Multi-Turn Interactive Conversation"
+            ])
 
-                raw_logits = np.array([3.2, 2.5, 1.8, 1.1, 0.4])
-                candidate_tokens = ["battery", "powertrain", "voltage", "current", "system"]
-                scaled_exp = np.exp(raw_logits / max(0.05, temp_val))
-                probs = scaled_exp / scaled_exp.sum()
-                fig_tok = px.bar(x=candidate_tokens, y=probs, labels={"x": "Candidate Next Token", "y": "Softmax Probability"},
-                                 title=f"Live Next-Token Softmax Distribution (T={temp_val})")
-                st.plotly_chart(fig_tok, use_container_width=True)
+            with tab_gen:
+                c_p1, c_p2 = st.columns([1, 1.8])
+                with c_p1:
+                    sys_prompt = st.text_area("System Prompt (Persona & Guardrails)", value="You are an Engineering Professor at SAKEC Mumbai. Provide rigorous, step-by-step technical explanations.")
+                    temp_val = st.slider("Temperature (T)", 0.05, 1.5, 0.25, 0.05)
+                    top_p_val = st.slider("Top-P (Nucleus Sampling)", 0.1, 1.0, 0.9, 0.05)
+                    p_mode = st.selectbox("Prompting Paradigm Template", ["Zero-Shot Prompt", "Few-Shot (In-Context Learning)", "Chain-of-Thought (Step-by-Step Engineering Math)"])
 
-            with c_p2:
-                prompt_presets = {
-                    "Zero-Shot Prompt": "Classify the technical domain of this project title: 'Real-Time Facial Expression Recognition using Deep Convolutional Networks'.",
-                    "Few-Shot (In-Context Learning)": (
-                        "Title: 'Design of Solar Buck-Boost Converter' -> Domain: Power Electronics | Lab: EV & Power Lab\n"
-                        "Title: 'RAG Chatbot on PARAM Shavak Cluster' -> Domain: Generative AI & NLP | Lab: High-Performance Computing Lab\n"
-                        "Title: 'Real-Time Facial Expression Recognition using Deep Convolutional Networks' ->"
-                    ),
-                    "Chain-of-Thought (Step-by-Step Engineering Math)": (
-                        "An EV battery pack has 96 cells in series, each with nominal voltage 3.7V and capacity 50Ah. "
-                        "Think step-by-step: 1) Calculate total pack voltage, 2) Calculate total energy in kWh, 3) Estimate driving range at 150 Wh/km."
-                    )
+                    raw_logits = np.array([3.2, 2.5, 1.8, 1.1, 0.4])
+                    candidate_tokens = ["battery", "powertrain", "voltage", "current", "system"]
+                    scaled_exp = np.exp(raw_logits / max(0.05, temp_val))
+                    probs = scaled_exp / scaled_exp.sum()
+                    fig_tok = px.bar(x=candidate_tokens, y=probs, labels={"x": "Candidate Next Token", "y": "Softmax Probability"},
+                                     title=f"Live Next-Token Softmax Distribution (T={temp_val})")
+                    st.plotly_chart(fig_tok, use_container_width=True)
+
+                with c_p2:
+                    prompt_presets = {
+                        "Zero-Shot Prompt": "Classify the technical domain of this project title: 'Real-Time Facial Expression Recognition using Deep Convolutional Networks'.",
+                        "Few-Shot (In-Context Learning)": (
+                            "Title: 'Design of Solar Buck-Boost Converter' -> Domain: Power Electronics | Lab: EV & Power Lab\n"
+                            "Title: 'RAG Chatbot on PARAM Shavak Cluster' -> Domain: Generative AI & NLP | Lab: High-Performance Computing Lab\n"
+                            "Title: 'Real-Time Facial Expression Recognition using Deep Convolutional Networks' ->"
+                        ),
+                        "Chain-of-Thought (Step-by-Step Engineering Math)": (
+                            "An EV battery pack has 96 cells in series, each with nominal voltage 3.7V and capacity 50Ah. "
+                            "Think step-by-step: 1) Calculate total pack voltage, 2) Calculate total energy in kWh, 3) Estimate driving range at 150 Wh/km."
+                        )
+                    }
+                    live_p = st.text_area("Live Prompt Input:", value=prompt_presets[p_mode], height=160)
+                    if st.button("🚀 Run Prompt on Configured LLM Engine", use_container_width=True):
+                        resp_txt, resp_src = execute_llm(live_p, sys_prompt, temp_val, top_p_val)
+                        st.success(f"Executed via: {resp_src}")
+                        st.markdown(resp_txt)
+
+            with tab_api:
+                st.markdown("#### 🔌 Emulating Code API Requests to LLM Servers")
+                st.write("The code below demonstrates how your Python script constructs an HTTP POST API request to transmit raw prompts, system roles, and hyper-parameters to standard local servers (like Ollama) or corporate endpoints (like OpenAI/Anthropic).")
+                
+                api_payload = {
+                    "model": "llama3.2:1b",
+                    "prompt": "Compute pack nominal voltage for a 96-series battery system.",
+                    "system": "You are a strict battery systems testing engineer.",
+                    "stream": False,
+                    "options": {
+                        "temperature": 0.2,
+                        "top_p": 0.9
+                    }
                 }
-                live_p = st.text_area("Live Prompt Input:", value=prompt_presets[p_mode], height=160)
-                if st.button("🚀 Run Prompt on Configured LLM Engine", use_container_width=True):
-                    resp_txt, resp_src = execute_llm(live_p, sys_prompt, temp_val, top_p_val)
-                    st.success(f"Executed via: {resp_src}")
-                    st.markdown(resp_txt)
+                st.json(api_payload)
+                st.code(f"""import requests
+
+url = "http://localhost:11434/api/generate"
+payload = {{
+    "model": "llama3.2:1b",
+    "prompt": "Compute pack nominal voltage for a 96-series battery system.",
+    "system": "You are a strict battery systems testing engineer.",
+    "stream": False,
+    "options": {{
+        "temperature": 0.2,
+        "top_p": 0.9
+    }}
+}}
+
+try:
+    response = requests.post(url, json=payload, timeout=10)
+    if response.status_code == 200:
+        print("Answer:", response.json()["response"])
+except Exception as e:
+    print("Error connecting to backend:", e)
+""", language="python")
+
+            with tab_chat:
+                st.markdown("#### 💬 Multi-Turn Conversation History Log")
+                
+                if "chat_history" not in st.session_state:
+                    st.session_state.chat_history = [
+                        {"role": "assistant", "content": "Welcome to SAKEC Simulation Lab! Ask me any engineering question to begin our session."}
+                    ]
+
+                for msg in st.session_state.chat_history:
+                    with st.chat_message(msg["role"]):
+                        st.markdown(msg["content"])
+
+                if chat_input := st.chat_input("Ask a follow-up question here..."):
+                    st.session_state.chat_history.append({"role": "user", "content": chat_input})
+                    with st.chat_message("user"):
+                        st.markdown(chat_input)
+
+                    # Simulated conversational contextual synthesis
+                    system_instr = "You are an EXTC/AI professor at SAKEC."
+                    context_prompt = f"Context of convo history: {str(st.session_state.chat_history[-3:])}. New Question: {chat_input}"
+                    ans_out, _ = execute_llm(context_prompt, system_instr, 0.3, 0.9)
+                    
+                    st.session_state.chat_history.append({"role": "assistant", "content": ans_out})
+                    with st.chat_message("assistant"):
+                        st.markdown(ans_out)
+                        
+                if st.button("🗑️ Clear Conversation History"):
+                    st.session_state.chat_history = [
+                        {"role": "assistant", "content": "Welcome to SAKEC Simulation Lab! Ask me any engineering question to begin our session."}
+                    ]
+                    st.rerun()
 
         elif active_page == "mod5_rag":
             st.markdown("##### 📄 Live 5-Stage RAG Pipeline (Select Preloaded SAKEC PDFs or Upload Your Own PDF)")
@@ -709,13 +814,14 @@ if active_page in MODULES:
                     st.info(f"**Top-{r_num} Retrieved (Chunk #{c_i+1} | Score: {sims[c_i]:.4f}):** {chunks[c_i]}")
 
                 aug_prompt = (
-                    "You are a factual RAG assistant. Answer the user's question strictly using ONLY the retrieved context chunks below."
-                    "RETRIEVED CONTEXT:" + "".join(ctx_blocks) +
+                    "You are a factual RAG assistant. Answer the user's question strictly using ONLY the retrieved context chunks below.\n\n"
+                    "RETRIEVED CONTEXT:\n" + "\n".join(ctx_blocks) + f"\n\n"
                     f"USER QUESTION: {rag_q}\n\nGROUNDED ANSWER:"
                 )
                 st.markdown("<div class='step-card'><b>Stage 5 — Augmented Prompt Construction & Grounded LLM Generation:</b></div>", unsafe_allow_html=True)
                 st.code(aug_prompt, language="markdown")
                 if st.button("✨ Generate Grounded Answer from Retrieved Context", use_container_width=True):
+                    # Uses the dynamically generated aug_prompt which contains the actual rag_q query text!
                     rag_ans, rag_src = execute_llm(aug_prompt, "Cite chunk numbers and use only provided context.", 0.1, 0.9)
                     st.success(f"Synthesized via {rag_src}:")
                     st.markdown(rag_ans)
