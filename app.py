@@ -740,9 +740,7 @@ with tab2:
 **How What Changed Fixes All Four Issues**
 1. **Free Live Cloud LLM Without User API Keys (`Free Public Cloud LLM : Pollinations OpenAI-Compatible Endpoint`):** Added as the new default engine in `execute_llm()`. It calls `https://text.pollinations.ai/openai` (which routes to live `openai`/`mistral`/`llama` models completely free with zero API keys required from you or your students), while retaining your **Local Ollama / PARAM Shavak** option[cite: 9] and an upgraded smart offline fallback.
 2. **RAG Stage 4 & Stage 5 Custom Query + Groundedness Verifier:** Users can now pick preset questions or type any custom question, edit the Stage 5 Augmented Prompt before sending, and view an automated **Groundedness & Faithfulness Verification Matrix** (Lexical Entity Overlap %, Cosine Faithfulness Score, and Hallucination Verdict: `GROUNDED`, `PARTIALLY GROUNDED`, or `UNSUPPORTED / ABSTAINED`).
-3. **Dynamic Context-Aware Next-Token Predictor (Module 4):** The Softmax distribution chart now dynamically computes candidate next-token logits based on the user's live prompt text and temperature slider $T$.
-4. **Live API Payload Inspector & Multi-Turn Chat Simulator (Module 4):** Added three dedicated sub-tabs inside Module 4:
-   * **Single-Turn & Next-Token Lab**
+3. **Dynamic Context-Aware Next-Token Predictor (Module 4):** The Softmax distribution chart now dynamically computes candidate next-token logits based on the user's live prompt text and temperature slider $T$.   * **Single-Turn & Next-Token Lab**
    * **📡 Live API Call & JSON Payload Inspector** (displays exact `curl`, Python `requests`, HTTP headers, and response JSON with latency/token metrics)
    * **💬 Multi-Turn Context Window Simulator** (interactive `st.chat_input` showing how the `messages: [{"role": "system"}, {"role": "user"}, {"role": "assistant"}]` array grows with each turn).
 
