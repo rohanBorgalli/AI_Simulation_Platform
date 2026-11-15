@@ -290,35 +290,23 @@ def execute_llm(prompt, system_prompt, temperature, top_p):
         ctx_part = prompt.split("RETRIEVED CONTEXT:")[1].split("USER QUESTION:")[0].strip()
         q_part = prompt.split("USER QUESTION:")[-1].replace("GROUNDED ANSWER:", "").strip()
         return (
-            f"**Grounded Synthesis (Temp={temperature}, Top-P={top_p}):**
-
-"
-            f"Based strictly on the retrieved ChromaDB context chunks for your question (*"{q_part}"*):
-
-"
-            f"{ctx_part}
-
-"
+            f"**Grounded Synthesis (Temp={temperature}, Top-P={top_p}):**"
+            f"Based strictly on the retrieved ChromaDB context chunks for your question (*"{q_part}"*):"
+            f"{ctx_part}"
             f"- **Verification Note:** Every claim above is directly traceable to the top-ranked Cosine Similarity chunks retrieved in Stage 4, preventing parametric hallucination."
         ), "Built-in Zero-API-Key RAG Synthesizer"
 
     if "96 cells" in prompt or "3.7V" in prompt:
         return (
-            f"**Step-by-Step Chain-of-Thought Engineering Derivation (Temp={temperature}):**
-"
-            f"1. **Total Pack Nominal Voltage:** $V_{{\text{{pack}}}} = 96 \times 3.7\text{{ V}} = 355.2\text{{ V}}$
-"
-            f"2. **Total Pack Energy Capacity:** $E_{{\text{{pack}}}} = \frac{{355.2\text{{ V}} \times 50\text{{ Ah}}}}{{1000}} = 17.76\text{{ kWh}}$
-"
+            f"**Step-by-Step Chain-of-Thought Engineering Derivation (Temp={temperature}):**"
+            f"1. **Total Pack Nominal Voltage:** $V_{{\text{{pack}}}} = 96 \times 3.7\text{{ V}} = 355.2\text{{ V}}$"
+            f"2. **Total Pack Energy Capacity:** $E_{{\text{{pack}}}} = \frac{{355.2\text{{ V}} \times 50\text{{ Ah}}}}{{1000}} = 17.76\text{{ kWh}}$"
             f"3. **Estimated Driving Range (at 150 Wh/km):** $\text{{Range}} = \frac{{17,760\text{{ Wh}}}}{{150\text{{ Wh/km}}}} = 118.4\text{{ km}}$"
         ), "Built-in Zero-API-Key LLM Engine"
 
     return (
-        f"**[Pedagogical LLM Output | Temp={temperature} | Top-P={top_p}]**
-
-"
-        f"- **System Persona Active:** *{system_prompt}*
-"
+        f"**[Pedagogical LLM Output | Temp={temperature} | Top-P={top_p}]**"
+        f"- **System Persona Active:** *{system_prompt}*"
         f"- **Decoded Response:** For the input prompt (`{prompt[:120]}...`), the autoregressive Transformer scales raw vocabulary logits by $1/T = 1/{max(0.05, temperature):.2f}$, filters the top {int(top_p*100)}% nucleus probability mass, and generates context-aligned tokens."
     ), "Built-in Zero-API-Key LLM Engine"
 
@@ -338,10 +326,8 @@ if st.session_state.user is None:
             "NLP, Dense Embeddings, Vector Databases, Prompt Engineering, RAG, and Agentic AI**."
         )
         st.info(
-            "**🔑 Pre-Configured Demo Accounts:**
-"
-            "- **Admin / Instructor Access:** Username: `admin` | Password: `admin123`
-"
+            "**🔑 Pre-Configured Demo Accounts:**"
+            "- **Admin / Instructor Access:** Username: `admin` | Password: `admin123`"
             "- **Participant / Student Access:** Username: `student1` | Password: `student123`"
         )
         st.markdown("#### 🌟 Integrated Reference Pedagogies")
@@ -598,10 +584,8 @@ with tab2:
     elif active_page == "mod2_nlp_embed":
         corpus_path = os.path.join(SAMPLE_DIR, "multidomain_embedding_corpus.txt")
         default_txt = open(corpus_path, "r", encoding="utf-8").read() if os.path.exists(corpus_path) else (
-            "Electric vehicles use lithium-ion battery packs and BLDC motors.
-"
-            "Deep learning neural networks learn hierarchical representations.
-"
+            "Electric vehicles use lithium-ion battery packs and BLDC motors."
+            "Deep learning neural networks learn hierarchical representations."
             "Spicy Mumbai vada pav and masala dosa are iconic Indian foods."
         )
         raw_inp = st.text_area("Enter Sentences to Tokenize & Embed (One sentence per line):", value=default_txt, height=180)
@@ -703,10 +687,8 @@ with tab2:
             prompt_presets = {
                 "Zero-Shot Prompt": "Classify the technical domain of this project title: 'Real-Time Facial Expression Recognition using Deep Convolutional Networks'.",
                 "Few-Shot (In-Context Learning)": (
-                    "Title: 'Design of Solar Buck-Boost Converter' -> Domain: Power Electronics | Lab: EV & Power Lab
-"
-                    "Title: 'RAG Chatbot on PARAM Shavak Cluster' -> Domain: Generative AI & NLP | Lab: High-Performance Computing Lab
-"
+                    "Title: 'Design of Solar Buck-Boost Converter' -> Domain: Power Electronics | Lab: EV & Power Lab"
+                    "Title: 'RAG Chatbot on PARAM Shavak Cluster' -> Domain: Generative AI & NLP | Lab: High-Performance Computing Lab"
                     "Title: 'Real-Time Facial Expression Recognition using Deep Convolutional Networks' ->"
                 ),
                 "Chain-of-Thought (Step-by-Step Engineering Math)": (
@@ -810,14 +792,8 @@ with tab2:
 
             # Stage 5: Augmented Prompt & Synthesis
             aug_prompt = (
-                "You are a factual RAG assistant. Answer the user's question strictly using ONLY the retrieved context chunks below.
-
-"
-                "RETRIEVED CONTEXT:
-" + "
-".join(ctx_blocks) + "
-
-"
+                "You are a factual RAG assistant. Answer the user's question strictly using ONLY the retrieved context chunks below."
+                "RETRIEVED CONTEXT:" + "".join(ctx_blocks) + ""
                 f"USER QUESTION: {rag_q}
 
 GROUNDED ANSWER:"
@@ -875,10 +851,7 @@ GROUNDED ANSWER:"
             for title_s, body_s in trace_steps:
                 st.markdown(f"<div class='step-card'><b>{title_s}:</b> {body_s}</div>", unsafe_allow_html=True)
 
-            st.success("🎯 **Final Agent Response (Synthesized from Verified Tool Observations):**
-
-- " + "
-- ".join(final_points))
+            st.success("🎯 **Final Agent Response (Synthesized from Verified Tool Observations):**- " + "- ".join(final_points))
 
 # ==========================================
 # TAB 3: HANDS-ON TASK VERIFICATION & GRADED QUIZ
