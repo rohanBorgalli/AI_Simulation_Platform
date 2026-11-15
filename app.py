@@ -239,6 +239,34 @@ def compute_embeddings(texts):
 
 def execute_llm(prompt, system_prompt, temperature, top_p):
     mode = st.session_state.get("exec_mode", "Built-in Interactive Simulator (Zero Setup)")
+    
+    # Google Gemini Direct Integration
+    if "Google Gemini" in mode:
+        gemini_key = st.session_state.get("gemini_api_key", "").strip()
+        if not gemini_key:
+            # Try Streamlit secret fallbacks
+            gemini_key = st.secrets.get("GEMINI_API_KEY", "")
+        
+        if gemini_key and genai is not None:
+            try:
+                client = genai.Client(api_key=gemini_key)
+                response = client.models.generate_content(
+                    model='gemini-3.5-flash',
+                    contents=f"System instructions: {system_prompt}\n\nUser prompt: {prompt}",
+                    config={
+                        'temperature': temperature,
+                        'top_p': top_p
+                    }
+                )
+                if response.text:
+                    return response.text, "Google Gemini (gemini-2.5-flash-lite)"
+            except Exception as e:
+                st.warning(f"Gemini API request failed: {e}. Defaulting to Simulator.")
+        else:
+            st.info("No Gemini API key detected. Please input your key in the sidebar to activate.")
+
+def execute_llm(prompt, system_prompt, temperature, top_p):
+    mode = st.session_state.get("exec_mode", "Built-in Interactive Simulator (Zero Setup)")
     hf_token = st.session_state.get("hf_token", "").strip()
 
     if "Hugging Face Serverless API" in mode and hf_token:
@@ -416,11 +444,20 @@ with st.sidebar:
         "LLM Execution Mode",
         [
             "Built-in Interactive Simulator (Zero Setup)",
+            "Google Gemini API (Highly Recommended)",
             "Hugging Face Serverless API (Free Open-Source)",
             "Local Ollama / PARAM Shavak Cluster Endpoint"
         ]
     )
-    if "Hugging Face Serverless" in st.session_state.exec_mode:
+     if "Google Gemini" in st.session_state.exec_mode:
+        st.session_state.gemini_api_key = st.text_input(
+            "Google Gemini API Key",
+            value=st.session_state.get("gemini_api_key", ""),
+            type="password",
+            placeholder="AIzaSy..."
+        )
+        st.caption("Model Active: `gemini-3.5-flash`")
+    elif "Hugging Face Serverless" in st.session_state.exec_mode:
         st.session_state.hf_token = st.text_input("Hugging Face User Access Token (Free)", type="password", help="Get a free Read token from huggingface.co")
         st.caption("Model Active: `Qwen/Qwen2.5-7B-Instruct`")
     elif "Ollama" in st.session_state.exec_mode:
