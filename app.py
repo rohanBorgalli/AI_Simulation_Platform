@@ -326,7 +326,7 @@ def compute_embeddings(texts):
         vecs.append(v)
     return np.array(vecs), "Built-in Deterministic 384-D Semantic Vector Engine (Zero-API-Key)"
 
-def call_google_gemini_api(prompt, system_prompt, temperature, top_p, api_key, model_name="gemini-2.5-flash"):
+def call_google_gemini_api(prompt, system_prompt, temperature, top_p, api_key, model_name="gemini-1.5-flash"):
     """Calls Google Gemini REST API directly via requests (Zero extra SDK dependency required)."""
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key.strip()}"
     payload = {
@@ -370,7 +370,7 @@ def execute_llm(prompt, system_prompt, temperature, top_p):
         except Exception:
             gemini_key = ""
 
-    gemini_model = st.session_state.get("gemini_model", "gemini-2.5-flash")
+    gemini_model = st.session_state.get("gemini_model", "gemini-1.5-flash")
 
     if "Gemini" in mode:
         if gemini_key:
@@ -551,7 +551,7 @@ with st.sidebar:
         )
         st.session_state.gemini_model = st.selectbox(
             "Gemini Model",
-            ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash", "gemini-1.5-flash"],
+            ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"],
             index=0
         )
         if st.session_state.gemini_api_key:
@@ -920,7 +920,7 @@ with tab2:
             insp_prompt = st.session_state.get("m4_prompt", "Explain how temperature scales logits before Softmax.")
             insp_temp = st.session_state.get("m4_temp", 0.25)
             insp_topp = st.session_state.get("m4_topp", 0.90)
-            insp_gem_model = st.session_state.get("gemini_model", "gemini-2.5-flash")
+            insp_gem_model = st.session_state.get("gemini_model", "gemini-1.5-flash")
 
             words_list = re.findall(r"\S+", insp_prompt)
             est_sys_tokens = max(1, int(len(insp_sys) / 3.8))
