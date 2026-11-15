@@ -111,7 +111,7 @@ st.markdown(f"""
     </div>
     <div style="text-align: right; font-size: 0.82rem; color: #e2e8f0;">
         <b>Multi-Engine Architecture</b><br>
-        <span style="color:#38bdf8;">Groq API • Local Ollama • Built-in Simulator</span>
+        <span style="color:#38bdf8;">Groq API • Google Gemini • Local Ollama • Built-in Simulator</span>
     </div>
 </div>
 
@@ -132,7 +132,7 @@ DEFAULT_PARAM_SHAVAK_DOC = (
     "provides high-density multi-core CPU and GPU accelerator compute dedicated to Deep Learning, Vision-Language Models, and "
     "Retrieval-Augmented Generation (RAG) research.\n\n"
     "2. Multi-Engine LLM & Zero-API-Key Policy: During student workshops and Faculty Development Programs (FDPs), training workloads "
-    "can execute on Groq Cloud API, local quantized models via Ollama (llama3.2:1b, qwen2.5:1.5b), or "
+    "can execute on Groq Cloud API (Llama-3.3, GPT-OSS, Qwen), Google Gemini API, local quantized models via Ollama (llama3.2:1b, qwen2.5:1.5b), or "
     "built-in deterministic simulators alongside 384-dimensional embeddings (all-MiniLM-L6-v2).\n\n"
     "3. Standard RAG Ingestion Protocol: When indexing technical manuals or OBE curriculum documents into ChromaDB or FAISS, "
     "practitioners configure a sliding window chunk size between 180 and 512 characters/tokens with a 15% to 20% chunk overlap "
@@ -265,7 +265,7 @@ def fetch_user_progress(username):
     return {r[0]: {"task_completed": bool(r[1]), "quiz_score": r[2], "max_score": r[3], "updated_at": r[4]} for r in rows}
 
 # ==========================================
-# 4. EMBEDDING & MULTI-ENGINE LLM ROUTER (GROQ + OLLAMA + BUILT-IN)
+# 4. EMBEDDING & MULTI-ENGINE LLM ROUTER (GROQ + GEMINI + OLLAMA + BUILT-IN)
 # ==========================================
 @st.cache_resource(show_spinner=False)
 def get_sentence_transformer():
@@ -326,8 +326,8 @@ def compute_embeddings(texts):
         vecs.append(v)
     return np.array(vecs), "Built-in Deterministic 384-D Semantic Vector Engine (Zero-API-Key)"
 
-def call_groq_api(prompt, system_prompt, temperature, top_p, api_key, model_name="openai/gpt-oss-20b"):
-    """Calls Groq's OpenAI-compatible Chat Completions REST endpoint directly via requests."""
+def call_groq_api(prompt, system_prompt, temperature, top_p, api_key, model_name="llama-3.3-70b-versatile"):
+    """Calls Groq OpenAI-compatible Chat Completions REST API directly via requests."""
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key.strip()}",
@@ -350,24 +350,56 @@ def call_groq_api(prompt, system_prompt, temperature, top_p, api_key, model_name
         if choices:
             text_out = choices[0].get("message", {}).get("content", "")
             if text_out:
-                return text_out, f"Groq API ({model_name})"
-        return "Groq returned an empty response.", f"Groq API ({model_name})"
+                return text_out, f"Groq Cloud API ({model_name})"
+        return "Groq returned an empty response.", f"Groq Cloud API ({model_name})"
     else:
         err_msg = resp.text[:300]
         raise RuntimeError(f"Groq API HTTP {resp.status_code}: {err_msg}")
 
-def execute_llm(prompt, system_prompt, temperature, top_p):
-    mode = st.session_state.get("exec_mode", "Built-in Interactive Simulator (Zero Setup)")
+def call_google_gemini_api(prompt, system_prompt, temperature, top_p, api_key, model_name="gemini-1.5-flash"):
+    """Calls Google Gemini REST API directly via requests."""
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key.strip()}"
+    payload = {
+        "systemInstruction": {
+            "parts": [{"text": system_prompt}]
+        },
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": prompt}]
+            }
+        ],
+        "generationConfig": {
+            "temperature": float(temperature),
+            "topP": float(top_p),
+            "maxOutputTokens": 1024
+        }
+    }
+    resp = requests.post(url, json=payload, timeout=30)
+    if resp.status_code == 200:
+        data = resp.json()
+        candidates = data.get("candidates", [])
+        if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            text_out = "".join(p.get("text", "") for p in parts)
+            if text_out:
+                return text_out, f"Google Gemini API ({model_name})"
+        return "Gemini returned an empty response.", f"Google Gemini API ({model_name})"
+    else:
+        err_msg = resp.text[:300]
+        raise RuntimeError(f"Gemini API HTTP {resp.status_code}: {err_msg}")
 
-    # 1. Groq API Mode (or automatic if key provided)
+def execute_llm(prompt, system_prompt, temperature, top_p):
+    mode = st.session_state.get("exec_mode", "Groq API (Ultra-Fast Cloud LLM)")
+
+    # 1. Groq API Mode
     groq_key = st.session_state.get("groq_api_key", "").strip()
     if not groq_key:
         try:
             groq_key = st.secrets.get("GROQ_API_KEY", "").strip()
         except Exception:
             groq_key = ""
-
-    groq_model = st.session_state.get("groq_model", "openai/gpt-oss-20b")
+    groq_model = st.session_state.get("groq_model", "llama-3.3-70b-versatile")
 
     if "Groq" in mode:
         if groq_key:
@@ -376,9 +408,27 @@ def execute_llm(prompt, system_prompt, temperature, top_p):
             except Exception as e:
                 st.warning(f"Groq API call failed ({e}). Falling back to Built-in Pedagogical LLM Simulator.")
         else:
-            st.warning("Please enter your Groq API Key in the sidebar (or switch to Built-in Simulator). Using Built-in Simulator for now.")
+            st.warning("Please enter your Groq API Key in the sidebar (`gsk_...`) or switch to Built-in Simulator. Using Built-in Simulator for now.")
 
-    # 2. Local Ollama / Cluster Mode
+    # 2. Google Gemini API Mode
+    gemini_key = st.session_state.get("gemini_api_key", "").strip()
+    if not gemini_key:
+        try:
+            gemini_key = st.secrets.get("GEMINI_API_KEY", "").strip()
+        except Exception:
+            gemini_key = ""
+    gemini_model = st.session_state.get("gemini_model", "gemini-1.5-flash")
+
+    if "Gemini" in mode:
+        if gemini_key:
+            try:
+                return call_google_gemini_api(prompt, system_prompt, temperature, top_p, gemini_key, gemini_model)
+            except Exception as e:
+                st.warning(f"Google Gemini API call failed ({e}). Falling back to Built-in Pedagogical LLM Simulator.")
+        else:
+            st.warning("Please enter your Google Gemini API Key in the sidebar or switch to Built-in Simulator. Using Built-in Simulator for now.")
+
+    # 3. Local Ollama / Cluster Mode
     ollama_url = st.session_state.get("ollama_url", "http://localhost:11434")
     ollama_model = st.session_state.get("ollama_model", "llama3.2:1b")
     if "Ollama" in mode:
@@ -399,7 +449,7 @@ def execute_llm(prompt, system_prompt, temperature, top_p):
         except Exception as e:
             st.warning(f"Local Ollama endpoint `{ollama_url}` unreachable ({e}). Falling back to Built-in Pedagogical LLM Simulator.")
 
-    # 3. Context-Aware Built-in Pedagogical LLM Simulator (Works 100% offline/free)
+    # 4. Context-Aware Built-in Pedagogical LLM Simulator (Works 100% offline/free)
     if "RETRIEVED CONTEXT:" in prompt:
         ctx_part = prompt.split("RETRIEVED CONTEXT:")[1].split("USER QUESTION:")[0].strip()
         q_part = prompt.split("USER QUESTION:")[-1].replace("GROUNDED ANSWER:", "").strip()
@@ -425,24 +475,57 @@ def execute_llm(prompt, system_prompt, temperature, top_p):
     ), "Built-in Zero-API-Key LLM Engine"
 
 def compute_dynamic_next_token_probs(prompt_text, temperature):
-    """Dynamically computes candidate next tokens and Softmax probabilities based on user prompt content."""
+    """
+    Dynamically computes candidate next tokens and Softmax probabilities based on the exact words
+    in the user's prompt so the chart updates on EVERY prompt edit and temperature change.
+    """
+    words = re.findall(r"[a-zA-Z0-9_.\-]+", prompt_text.strip())
+    last_word = words[-1].lower() if words else "ai"
     p_low = prompt_text.lower()
-    if any(k in p_low for k in ["ev", "battery", "voltage", "cell", "motor", "96"]):
-        tokens = ["355.2V", "battery", "kWh", "powertrain", "thermal"]
-        logits = np.array([3.5, 2.7, 2.1, 1.4, 0.6])
-    elif any(k in p_low for k in ["rag", "chunk", "vector", "chromadb", "embedding"]):
-        tokens = ["Cosine", "ChromaDB", "embeddings", "retrieval", "context"]
-        logits = np.array([3.4, 2.8, 2.2, 1.5, 0.7])
-    elif any(k in p_low for k in ["facial", "cnn", "convolutional", "vision", "image"]):
-        tokens = ["Computer_Vision", "Deep_Learning", "CNN", "features", "accuracy"]
-        logits = np.array([3.6, 2.6, 1.9, 1.2, 0.5])
-    else:
-        tokens = ["model", "neural", "learning", "system", "analysis"]
-        logits = np.array([3.1, 2.4, 1.8, 1.1, 0.4])
 
+    # Build a rich, prompt-specific candidate token list + logit profile
+    if any(k in p_low for k in ["ev", "battery", "voltage", "cell", "motor", "96", "50ah", "pack"]):
+        base_tokens = ["355.2V", "17.76_kWh", "118.4_km", "BMS", "Lithium-Ion", "BLDC_Motor"]
+        base_logits = np.array([4.3, 3.6, 3.0, 2.3, 1.7, 1.0])
+    elif any(k in p_low for k in ["rag", "chunk", "vector", "chromadb", "embedding", "cosine"]):
+        base_tokens = ["Cosine_Sim", "ChromaDB", "384-D_Vector", "Top-K_Chunks", "HNSW_Index", "Grounded"]
+        base_logits = np.array([4.2, 3.5, 2.9, 2.2, 1.6, 0.9])
+    elif any(k in p_low for k in ["facial", "cnn", "convolutional", "vision", "image", "expression"]):
+        base_tokens = ["Computer_Vision", "CNN_Layers", "Deep_Learning", "Feature_Map", "Softmax", "Emotion"]
+        base_logits = np.array([4.4, 3.6, 2.8, 2.1, 1.5, 0.8])
+    elif any(k in p_low for k in ["solar", "buck", "boost", "converter", "power", "inverter"]):
+        base_tokens = ["Power_Electronics", "PWM_Duty", "DC-DC_Stage", "Inductor", "Efficiency", "MOSFET"]
+        base_logits = np.array([4.1, 3.5, 2.8, 2.2, 1.5, 0.9])
+    else:
+        # Directly extract salient words from the user's own prompt + continuation tokens
+        unique_words = []
+        for w in reversed(words):
+            w_clean = w[:14]
+            if len(w_clean) > 2 and w_clean.lower() not in [u.lower() for u in unique_words]:
+                unique_words.append(w_clean)
+            if len(unique_words) >= 3:
+                break
+        while len(unique_words) < 3:
+            unique_words.append(f"token_{len(unique_words)+1}")
+        h = abs(hash(prompt_text))
+        base_tokens = [
+            f"->{unique_words[0]}",
+            f"{unique_words[1]}_out",
+            f"{unique_words[2]}_ctx",
+            f"pred_{h % 97}",
+            "reasoning",
+            "conclusion"
+        ]
+        # Slight deterministic perturbation from prompt hash so every single character edit shifts logits
+        jitter = np.array([(h >> (i * 3)) % 7 * 0.08 for i in range(6)])
+        base_logits = np.array([4.0, 3.3, 2.7, 2.0, 1.4, 0.8]) + jitter
+
+    # Add fine-grained prompt-length modulation so typing always visibly updates the bars
+    char_mod = (len(prompt_text) % 11) * 0.04
+    logits = base_logits + np.array([char_mod, -char_mod * 0.5, char_mod * 0.3, 0.0, -char_mod * 0.2, char_mod * 0.1])
     scaled = np.exp(logits / max(0.05, float(temperature)))
     probs = scaled / scaled.sum()
-    return tokens, logits, probs
+    return base_tokens, np.round(logits, 3), np.round(probs, 4)
 
 # ==========================================
 # 5. LOGIN & REGISTRATION VIEW
@@ -502,7 +585,7 @@ if st.session_state.user is None:
     st.stop()
 
 # ==========================================
-# 6. SIDEBAR: USER PROFILE, PROGRESS & GROQ / OLLAMA ENGINE ROUTER
+# 6. SIDEBAR: USER PROFILE, PROGRESS & MULTI-ENGINE LLM ROUTER
 # ==========================================
 user = st.session_state.user
 user_prog = fetch_user_progress(user["username"])
@@ -532,6 +615,7 @@ with st.sidebar:
         "Select LLM Execution Backend",
         [
             "Groq API (Ultra-Fast Cloud LLM)",
+            "Google Gemini API (Live Cloud LLM)",
             "Built-in Interactive Simulator (Zero API Key)",
             "Local Ollama / PARAM Shavak Cluster Endpoint"
         ],
@@ -541,20 +625,44 @@ with st.sidebar:
     if "Groq" in st.session_state.exec_mode:
         default_groq_key = st.session_state.get("groq_api_key", "")
         st.session_state.groq_api_key = st.text_input(
-            "🔑 Groq API Key",
+            "🔑 Groq API Key (console.groq.com)",
             value=default_groq_key,
             type="password",
-            help="Paste your Groq API Key (gsk_...). If left blank, the platform automatically falls back to the Built-in Simulator."
+            help="Paste your free Groq API Key (gsk_...). If left blank, the platform automatically falls back to the Built-in Simulator."
         )
         st.session_state.groq_model = st.selectbox(
             "Groq Model ID",
-            ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "qwen/qwen3.8-27b"],
+            [
+                "llama-3.3-70b-versatile",
+                "llama-3.1-8b-instant",
+                "openai/gpt-oss-20b",
+                "openai/gpt-oss-120b",
+                "qwen/qwen3-32b"
+            ],
             index=0
         )
         if st.session_state.groq_api_key:
-            st.success("✅ Groq API Key Configured")
+            st.success("✅ Groq API Key Active")
         else:
-            st.caption("ℹ️ Enter a Groq key above or leave blank to use the automatic Built-in Simulator fallback.")
+            st.caption("ℹ️ Enter your Groq key (`gsk_...`) above or leave blank for automatic Built-in Simulator fallback.")
+
+    elif "Gemini" in st.session_state.exec_mode:
+        default_gem_key = st.session_state.get("gemini_api_key", "")
+        st.session_state.gemini_api_key = st.text_input(
+            "🔑 Google Gemini API Key",
+            value=default_gem_key,
+            type="password",
+            help="Paste your Google AI Studio API Key (AIza...). If left blank, the platform automatically falls back to the Built-in Simulator."
+        )
+        st.session_state.gemini_model = st.selectbox(
+            "Gemini Model",
+            ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash", "gemini-2.5-flash"],
+            index=0
+        )
+        if st.session_state.gemini_api_key:
+            st.success("✅ Gemini API Key Active")
+        else:
+            st.caption("ℹ️ Enter a Gemini key above or leave blank for automatic Built-in Simulator fallback.")
 
     elif "Ollama" in st.session_state.exec_mode:
         st.session_state.ollama_url = st.text_input("Ollama / Cluster Endpoint URL", value="http://localhost:11434")
@@ -836,13 +944,7 @@ with tab2:
                 )
                 temp_val = st.slider("Temperature (T)", 0.05, 1.5, 0.25, 0.05, key="m4_temp")
                 top_p_val = st.slider("Top-P (Nucleus Sampling)", 0.1, 1.0, 0.9, 0.05, key="m4_topp")
-                p_mode = st.selectbox(
-                    "Prompting Paradigm Template",
-                    ["Zero-Shot Prompt", "Few-Shot (In-Context Learning)", "Chain-of-Thought (Step-by-Step Engineering Math)"],
-                    key="m4_mode"
-                )
 
-            with c_p2:
                 prompt_presets = {
                     "Zero-Shot Prompt": "Classify the technical domain of this project title: 'Real-Time Facial Expression Recognition using Deep Convolutional Networks'.",
                     "Few-Shot (In-Context Learning)": (
@@ -855,18 +957,46 @@ with tab2:
                         "Think step-by-step: 1) Calculate total pack voltage, 2) Calculate total energy in kWh, 3) Estimate driving range at 150 Wh/km."
                     )
                 }
-                live_p = st.text_area("Live Prompt Input:", value=prompt_presets[p_mode], height=145, key="m4_prompt")
+
+                def on_mode_change():
+                    mode_sel = st.session_state.get("m4_mode_sel", "Zero-Shot Prompt")
+                    st.session_state["m4_prompt"] = prompt_presets.get(mode_sel, "")
+
+                p_mode = st.selectbox(
+                    "Prompting Paradigm Template",
+                    list(prompt_presets.keys()),
+                    key="m4_mode_sel",
+                    on_change=on_mode_change
+                )
+
+                if "m4_prompt" not in st.session_state:
+                    st.session_state["m4_prompt"] = prompt_presets[p_mode]
+
+            with c_p2:
+                live_p = st.text_area("Live Prompt Input (Edit text or switch template to update next-token plot):", height=145, key="m4_prompt")
 
                 cand_tokens, raw_logits, probs = compute_dynamic_next_token_probs(live_p, temp_val)
+                df_soft = pd.DataFrame({
+                    "Candidate_Next_Token": cand_tokens,
+                    "Raw_Logit_z": raw_logits,
+                    "Softmax_Probability": probs
+                })
                 fig_tok = px.bar(
-                    x=cand_tokens, y=probs,
-                    labels={"x": "Candidate Next Token", "y": "Softmax Probability P(w_t)"},
-                    title=f"Dynamic Next-Token Softmax Distribution (T={temp_val})",
-                    color=probs, color_continuous_scale="Blues"
+                    df_soft,
+                    x="Candidate_Next_Token",
+                    y="Softmax_Probability",
+                    hover_data=["Raw_Logit_z"],
+                    text="Softmax_Probability",
+                    labels={"Candidate_Next_Token": "Predicted Next Token (w_t)", "Softmax_Probability": "Softmax Probability P(w_t | context)"},
+                    title=f"Live Prompt-Conditioned Next-Token Softmax Distribution (T={temp_val})",
+                    color="Softmax_Probability",
+                    color_continuous_scale="Blues"
                 )
+                fig_tok.update_traces(texttemplate="%{text:.3f}", textposition="outside")
+                fig_tok.update_layout(yaxis_range=[0, 1.08])
                 st.plotly_chart(fig_tok, use_container_width=True)
 
-                if st.button("🚀 Run Prompt on Configured LLM Engine (Groq / Ollama / Simulator)", use_container_width=True, key="m4_run"):
+                if st.button("🚀 Run Prompt on Configured LLM Engine (Groq / Gemini / Ollama / Simulator)", use_container_width=True, key="m4_run"):
                     with st.spinner("Generating LLM response..."):
                         resp_txt, resp_src = execute_llm(live_p, sys_prompt, temp_val, top_p_val)
                     st.success(f"Executed via: **{resp_src}**")
@@ -911,13 +1041,13 @@ with tab2:
             st.markdown("##### 🔍 4C. Live LLM API Payload, Tokenization & Latency/Cost Inspector")
             st.write(
                 "Inspect the exact JSON HTTP request body dispatched to **Groq (`chat/completions`)**, "
-                "along with token budget and cost estimation metrics."
+                "**Google Gemini (`generateContent`)**, and **Local Ollama (`/api/generate`)**, along with token budget metrics."
             )
             insp_sys = st.session_state.get("m4_sys", "You are an Engineering Professor at SAKEC Mumbai.")
             insp_prompt = st.session_state.get("m4_prompt", "Explain how temperature scales logits before Softmax.")
             insp_temp = st.session_state.get("m4_temp", 0.25)
             insp_topp = st.session_state.get("m4_topp", 0.90)
-            insp_groq_model = st.session_state.get("groq_model", "openai/gpt-oss-20b")
+            insp_groq_model = st.session_state.get("groq_model", "llama-3.3-70b-versatile")
 
             words_list = re.findall(r"\S+", insp_prompt)
             est_sys_tokens = max(1, int(len(insp_sys) / 3.8))
@@ -928,11 +1058,11 @@ with tab2:
             tk1.metric("System Prompt Tokens", est_sys_tokens)
             tk2.metric("User Prompt Tokens", est_usr_tokens)
             tk3.metric("Total Input Tokens", total_in_tokens)
-            tk4.metric("Est. Groq GPT-OSS Cost", f"${(total_in_tokens * 0.000000075):.7f}")
+            tk4.metric("Est. Cloud Inference Cost", f"${(total_in_tokens * 0.00000015):.7f}")
 
             p_col1, p_col2 = st.columns(2)
             with p_col1:
-                st.markdown(f"**1. Groq API Payload (`{insp_groq_model}`)**")
+                st.markdown(f"**1. Groq OpenAI-Compatible Payload (`{insp_groq_model}`)**")
                 groq_json_preview = {
                     "endpoint": "https://api.groq.com/openai/v1/chat/completions",
                     "model": insp_groq_model,
@@ -947,7 +1077,7 @@ with tab2:
                 st.code(json.dumps(groq_json_preview, indent=2), language="json")
 
             with p_col2:
-                st.markdown("**2. Local Ollama / OpenAI-Compatible Payload**")
+                st.markdown("**2. Local Ollama / Cluster Payload**")
                 ollama_json_preview = {
                     "endpoint": f"{st.session_state.get('ollama_url', 'http://localhost:11434')}/api/generate",
                     "model": st.session_state.get("ollama_model", "llama3.2:1b"),
@@ -1099,7 +1229,7 @@ with tab2:
             st.markdown("<div class='step-card'><b>Stage 5 — Augmented Prompt Construction & Grounded LLM Synthesis:</b></div>", unsafe_allow_html=True)
             st.code(aug_prompt, language="markdown")
 
-            if st.button("✨ Synthesize Grounded RAG Answer (via Configured Groq / Ollama / Simulator)", use_container_width=True, key="rag_synth_btn"):
+            if st.button("✨ Synthesize Grounded RAG Answer (via Configured Groq / Gemini / Ollama / Simulator)", use_container_width=True, key="rag_synth_btn"):
                 with st.spinner("Synthesizing grounded answer from retrieved chunks..."):
                     rag_ans, rag_src = execute_llm(aug_prompt, "You are a factual RAG synthesis engine. Cite chunk numbers and use only provided context.", 0.1, 0.9)
                 st.success(f"Synthesized via: **{rag_src}**")
@@ -1141,18 +1271,20 @@ with tab2:
             if any(k in ag_query.lower() for k in ["sakec", "param", "policy", "rag", "shavak"]):
                 trace_steps.append(("🧠 Thought 3", "Query references SAKEC institutional infrastructure. Calling `sakec_policy_search`."))
                 trace_steps.append(("🛠️ Action 3", "`sakec_policy_search(topic='PARAM Shavak & RAG Charter')`"))
-                kb_obs = "PARAM Shavak cluster supports Groq API, local Ollama LLMs (llama3.2:1b, qwen2.5:1.5b), and 384-D MiniLM embeddings with 180-512 char chunking."
+                kb_obs = "PARAM Shavak cluster supports Groq API, Google Gemini API, local Ollama LLMs (llama3.2:1b, qwen2.5:1.5b), and 384-D MiniLM embeddings with 180-512 char chunking."
                 trace_steps.append(("👁️ Observation 3", f"`{kb_obs}`"))
                 final_points.append(f"**SAKEC Policy Observation:** {kb_obs}")
 
             for title_s, body_s in trace_steps:
                 st.markdown(f"<div class='step-card'><b>{title_s}:</b> {body_s}</div>", unsafe_allow_html=True)
 
-            # Also allow Groq to synthesize the final agent answer if Groq API key is active
-            if st.session_state.get("groq_api_key", "").strip() and "Groq" in st.session_state.get("exec_mode", ""):
+            active_mode = st.session_state.get("exec_mode", "")
+            has_groq = bool(st.session_state.get("groq_api_key", "").strip()) and "Groq" in active_mode
+            has_gem = bool(st.session_state.get("gemini_api_key", "").strip()) and "Gemini" in active_mode
+            if has_groq or has_gem:
                 agent_summary_prompt = "Synthesize a concise final response from these verified tool observations:\n" + "\n".join(final_points)
-                groq_ans, groq_src = execute_llm(agent_summary_prompt, "You are an autonomous ReAct engineering agent.", 0.2, 0.9)
-                st.success(f"🎯 **Final Agent Response (Synthesized via {groq_src}):**\n\n{groq_ans}")
+                llm_ans, llm_src = execute_llm(agent_summary_prompt, "You are an autonomous ReAct engineering agent.", 0.2, 0.9)
+                st.success(f"🎯 **Final Agent Response (Synthesized via {llm_src}):**\n\n{llm_ans}")
             else:
                 st.success("🎯 **Final Agent Response (Synthesized from Verified Tool Observations):**\n\n- " + "\n- ".join(final_points))
 
