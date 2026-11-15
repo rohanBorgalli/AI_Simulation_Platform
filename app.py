@@ -589,8 +589,7 @@ with tab2:
             "Spicy Mumbai vada pav and masala dosa are iconic Indian foods."
         )
         raw_inp = st.text_area("Enter Sentences to Tokenize & Embed (One sentence per line):", value=default_txt, height=180)
-        sents = [s.strip() for s in raw_inp.split("
-") if s.strip()]
+        sents = [s.strip() for s in raw_inp.split("") if s.strip()]
 
         if len(sents) >= 3:
             vecs, emb_name = compute_embeddings(sents)
@@ -629,10 +628,8 @@ with tab2:
             "Backpropagation computes gradients of the Cross-Entropy Loss function across neural layers.",
             "Authentic Mumbai vada pav and Hyderabadi biryani are popular Indian culinary dishes."
         ]
-        docs_raw = st.text_area("Vector Database Stored Documents (One per line):", value="
-".join(default_kb), height=130)
-        docs = [d.strip() for d in docs_raw.split("
-") if d.strip()]
+        docs_raw = st.text_area("Vector Database Stored Documents (One per line):", value="".join(default_kb), height=130)
+        docs = [d.strip() for d in docs_raw.split("") if d.strip()]
         query_str = st.text_input("🔍 Enter Search Query (Converted to Query Vector q):", value="How does ChromaDB search embeddings for RAG?")
 
         if docs and query_str:
@@ -723,18 +720,15 @@ with tab2:
         if up_file is not None:
             if up_file.name.lower().endswith(".pdf"):
                 reader = PdfReader(up_file)
-                raw_doc_text = "
-".join([p.extract_text() or "" for p in reader.pages])
+                raw_doc_text = "".join([p.extract_text() or "" for p in reader.pages])
             else:
                 raw_doc_text = up_file.read().decode("utf-8", errors="ignore")
         elif "PARAM Shavak" in doc_choice and os.path.exists(os.path.join(SAMPLE_DIR, "SAKEC_PARAM_Shavak_AI_Policy_2026.pdf")):
             reader = PdfReader(os.path.join(SAMPLE_DIR, "SAKEC_PARAM_Shavak_AI_Policy_2026.pdf"))
-            raw_doc_text = "
-".join([p.extract_text() or "" for p in reader.pages])
+            raw_doc_text = "".join([p.extract_text() or "" for p in reader.pages])
         elif "Electric Vehicles" in doc_choice and os.path.exists(os.path.join(SAMPLE_DIR, "Introduction_to_Electric_Vehicles_Course_Manual.pdf")):
             reader = PdfReader(os.path.join(SAMPLE_DIR, "Introduction_to_Electric_Vehicles_Course_Manual.pdf"))
-            raw_doc_text = "
-".join([p.extract_text() or "" for p in reader.pages])
+            raw_doc_text = "".join([p.extract_text() or "" for p in reader.pages])
 
         if not raw_doc_text.strip():
             raw_doc_text = (
