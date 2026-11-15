@@ -1,0 +1,10 @@
+Electric vehicles rely on Lithium-Ion battery management systems to prevent thermal runaway.
+BLDC and Permanent Magnet Synchronous Motors deliver high torque efficiency in modern electric powertrains.
+Regenerative braking recovers kinetic energy during urban deceleration in Mumbai traffic.
+Deep learning neural networks utilize backpropagation and gradient descent to minimize cross-entropy loss.
+Convolutional Neural Networks extract spatial features for facial expression and emotion recognition.
+Transformer architectures apply multi-head self-attention mechanisms to model long-range token dependencies.
+Retrieval-Augmented Generation grounds Large Language Model outputs using ChromaDB vector similarity search.
+Dense sentence embeddings project semantic meaning into a 384-dimensional normalized vector space.
+Authentic Maharashtrian puran poli, vada pav, and misal pav are popular culinary specialties in Mumbai.
+Hyderabadi dum biryani is slow-cooked with basmati rice, saffron, and aromatic Indian spices.
