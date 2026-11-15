@@ -1,4 +1,3 @@
-%%writefile app.py
 # End-to-End AI, ML, DL, GenAI, LLM, NLP, Embeddings, Vector DB, RAG & Agentic AI Simulation Platform
 # Developed by Dr. Rohan Borgalli, Shah & Anchor Kutchhi Engineering College, Chembur
 
