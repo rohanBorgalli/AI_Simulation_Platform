@@ -449,7 +449,7 @@ with st.sidebar:
             "Local Ollama / PARAM Shavak Cluster Endpoint"
         ]
     )
-     if "Google Gemini" in st.session_state.exec_mode:
+    if "Google Gemini" in st.session_state.exec_mode:
         st.session_state.gemini_api_key = st.text_input(
             "Google Gemini API Key",
             value=st.session_state.get("gemini_api_key", ""),
