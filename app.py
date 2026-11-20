@@ -5,7 +5,6 @@
 import os
 import re
 import json
-import sqlite3
 import hashlib
 from datetime import datetime
 import numpy as np
@@ -163,106 +162,19 @@ DEFAULT_EV_COURSE_DOC = (
 )
 
 # ==========================================
-# 3. SQLITE DATABASE & RBAC PROGRESS ENGINE
+# 3. CLOUD SUPABASE + LOCAL JSON PERSISTENCE LAYER
 # ==========================================
-DB_PATH = "training_platform.db"
-
-def init_database():
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            full_name TEXT NOT NULL,
-            department TEXT DEFAULT 'EXTC - SAKEC',
-            password_hash TEXT NOT NULL,
-            role TEXT DEFAULT 'user',
-            created_at TEXT NOT NULL
-        )
-    """)
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS progress (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL,
-            module_id TEXT NOT NULL,
-            module_name TEXT NOT NULL,
-            task_completed INTEGER DEFAULT 0,
-            quiz_score INTEGER DEFAULT 0,
-            max_score INTEGER DEFAULT 3,
-            updated_at TEXT NOT NULL,
-            UNIQUE(username, module_id)
-        )
-    """)
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    admin_hash = hashlib.sha256("admin123".encode()).hexdigest()
-    student_hash = hashlib.sha256("student123".encode()).hexdigest()
-    c.execute(
-        "INSERT OR IGNORE INTO users (username, full_name, department, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        ("admin", "Dr. Rohan Borgalli (Admin)", "EXTC - SAKEC Chembur", admin_hash, "admin", now)
-    )
-    c.execute(
-        "INSERT OR IGNORE INTO users (username, full_name, department, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-        ("student1", "Demo Participant (Trainee)", "EXTC - SAKEC Chembur", student_hash, "user", now)
-    )
-    conn.commit()
-    conn.close()
+from db_persistence import (
+    init_database,
+    authenticate_user,
+    register_new_user,
+    save_module_progress,
+    fetch_user_progress,
+    fetch_all_users_and_progress,
+    get_storage_status,
+)
 
 init_database()
-
-def authenticate_user(username, password):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
-    c.execute(
-        "SELECT username, full_name, department, role FROM users WHERE username=? AND password_hash=?",
-        (username.strip(), pw_hash)
-    )
-    row = c.fetchone()
-    conn.close()
-    if row:
-        return {"username": row[0], "full_name": row[1], "department": row[2], "role": row[3]}
-    return None
-
-def register_new_user(username, full_name, department, password, role="user"):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    pw_hash = hashlib.sha256(password.encode()).hexdigest()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    try:
-        c.execute(
-            "INSERT INTO users (username, full_name, department, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (username.strip(), full_name.strip(), department.strip(), pw_hash, role, now)
-        )
-        conn.commit()
-        conn.close()
-        return True, "Account registered successfully! Please sign in."
-    except sqlite3.IntegrityError:
-        conn.close()
-        return False, "Username already exists. Please choose a different username."
-
-def save_module_progress(username, module_id, module_name, task_done=False, quiz_score=0, max_score=3):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    c.execute("""
-        INSERT INTO progress (username, module_id, module_name, task_completed, quiz_score, max_score, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(username, module_id) DO UPDATE SET
-            task_completed = MAX(task_completed, excluded.task_completed),
-            quiz_score = MAX(quiz_score, excluded.quiz_score),
-            updated_at = excluded.updated_at
-    """, (username, module_id, module_name, int(task_done), int(quiz_score), int(max_score), now))
-    conn.commit()
-    conn.close()
-
-def fetch_user_progress(username):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT module_id, task_completed, quiz_score, max_score, updated_at FROM progress WHERE username=?", (username,))
-    rows = c.fetchall()
-    conn.close()
-    return {r[0]: {"task_completed": bool(r[1]), "quiz_score": r[2], "max_score": r[3], "updated_at": r[4]} for r in rows}
 
 # ==========================================
 # 4. EMBEDDING & MULTI-ENGINE LLM ROUTER (GROQ + GEMINI + OLLAMA + BUILT-IN)
@@ -679,14 +591,19 @@ with st.sidebar:
 # ==========================================
 if active_page == "admin_panel":
     st.subheader("🛡️ Admin Analytics & Participant Progress Tracker")
-    conn = sqlite3.connect(DB_PATH)
-    df_users = pd.read_sql_query("SELECT username, full_name, department, role, created_at FROM users", conn)
-    df_prog = pd.read_sql_query("SELECT username, module_id, module_name, task_completed, quiz_score, max_score, updated_at FROM progress", conn)
-    conn.close()
+    storage_meta = get_storage_status()
+    if storage_meta["supabase_configured"]:
+        st.success(f"☁️ **Persistent Cloud Database Connected:** `{storage_meta['backend']}` | Tables: `{storage_meta['users_table']}`, `{storage_meta['records_table']}`")
+    else:
+        st.info(f"💾 **Storage Mode:** `{storage_meta['backend']}` (Configure `SUPABASE_URL` and `SUPABASE_KEY` in Secrets for permanent cloud persistence).")
+
+    users_list, prog_list = fetch_all_users_and_progress()
+    df_users = pd.DataFrame(users_list) if users_list else pd.DataFrame(columns=["username", "full_name", "department", "role", "created_at"])
+    df_prog = pd.DataFrame(prog_list) if prog_list else pd.DataFrame(columns=["username", "module_id", "module_name", "task_completed", "quiz_score", "max_score", "updated_at"])
 
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("Total Registered Users", len(df_users))
-    k2.metric("Participants (Trainees)", len(df_users[df_users["role"] == "user"]))
+    k2.metric("Participants (Trainees)", len(df_users[df_users["role"] == "user"]) if not df_users.empty else 0)
     k3.metric("Logged Module Completions", len(df_prog))
     cohort_acc = f"{(df_prog['quiz_score'].sum() / max(1, df_prog['max_score'].sum()) * 100):.1f}%" if not df_prog.empty else "0.0%"
     k4.metric("Average Cohort Quiz Score", cohort_acc)
